@@ -13,8 +13,8 @@ function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:5001/api/auth/signup", formData);
-      alert(res.data.msg); // "User registered successfully"
+      const res = await axios.post("http://localhost:5001/signup", formData);
+      alert(res.data.message); // "User registered successfully"
       navigate("/login");
     } catch (error) {
       console.error(error);

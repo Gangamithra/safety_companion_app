@@ -1,7 +1,12 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 function Home() {
+
+  const navigate = useNavigate();
+
   return (
+
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
 
       <h1 className="text-5xl font-bold text-gray-800 mb-6">
@@ -14,16 +19,25 @@ function Home() {
       </p>
 
       <div className="space-x-4">
-        <button className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800">
+
+        <button
+          onClick={() => navigate("/login")}
+          className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800"
+        >
           Get Started
         </button>
 
-        <button className="border border-black px-6 py-3 rounded-lg hover:bg-black hover:text-white">
+        <button
+          onClick={() => navigate("/signup")}
+          className="border border-black px-6 py-3 rounded-lg hover:bg-black hover:text-white"
+        >
           Learn More
         </button>
+
       </div>
 
     </div>
+
   );
 }
 

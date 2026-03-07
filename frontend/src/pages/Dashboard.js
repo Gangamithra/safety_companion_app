@@ -1,86 +1,120 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function Dashboard() {
+
+  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    fetch("http://localhost:5001/api/auth/me", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => setUser(data))
+      .catch(err => console.log(err));
+
+  }, [navigate]);
+
+  if (!user) {
+    return <div className="p-10 text-center text-xl">Loading...</div>;
+  }
+
   return (
+
     <div className="flex min-h-screen bg-gray-100">
 
-      {/* Sidebar */}
+      {/* SIDEBAR */}
+
       <div className="w-64 bg-black text-white p-6">
 
-        <h2 className="text-2xl font-bold mb-8">
-          Safety Companion
+        <h2 className="text-2xl font-bold mb-6">
+          AI Companion
         </h2>
 
-        <nav className="space-y-4">
+        <ul className="space-y-4">
 
-          <Link
-            to="/dashboard"
-            className="block hover:bg-gray-800 p-2 rounded"
-          >
+          <li className="cursor-pointer hover:text-gray-300">
             Dashboard
-          </Link>
+          </li>
 
-          <Link
-            to="/map"
-            className="block hover:bg-gray-800 p-2 rounded"
-          >
-            Safety Map
-          </Link>
+          <li className="cursor-pointer hover:text-gray-300">
+            Emergency Contacts
+          </li>
 
-          <Link
-            to="/reports"
-            className="block hover:bg-gray-800 p-2 rounded"
-          >
-            Report Incident
-          </Link>
+          <li className="cursor-pointer hover:text-gray-300">
+            Safety Tips
+          </li>
 
-          <Link
-            to="/login"
-            className="block hover:bg-gray-800 p-2 rounded"
-          >
-            Logout
-          </Link>
+          <li className="cursor-pointer hover:text-gray-300">
+            Map
+          </li>
 
-        </nav>
+        </ul>
 
       </div>
 
-      {/* Main Content */}
+      {/* MAIN */}
+
       <div className="flex-1 p-10">
 
-        <h1 className="text-3xl font-bold mb-6">
-          Dashboard
+        <h1 className="text-3xl font-bold mb-8">
+          Welcome {user.name}
         </h1>
 
-        {/* Cards */}
         <div className="grid grid-cols-3 gap-6">
 
-          <div className="bg-white p-6 rounded-xl shadow">
-            <h3 className="text-xl font-semibold">
-              Safety Score
-            </h3>
-            <p className="text-4xl font-bold mt-3">
-              85%
-            </p>
-          </div>
+          {/* BOX 1 */}
 
-          <div className="bg-white p-6 rounded-xl shadow">
-            <h3 className="text-xl font-semibold">
-              Nearby Alerts
-            </h3>
-            <p className="mt-3 text-gray-600">
-              2 incidents reported nearby
-            </p>
-          </div>
+          <div className="bg-white p-6 rounded-lg shadow">
 
-          <div className="bg-white p-6 rounded-xl shadow">
-            <h3 className="text-xl font-semibold">
+            <h3 className="text-xl font-semibold mb-2">
               Emergency Contacts
             </h3>
-            <p className="mt-3 text-gray-600">
-              3 contacts added
+
+            <p className="text-gray-600">
+              Manage your emergency contacts
             </p>
+
+          </div>
+
+          {/* BOX 2 */}
+
+          <div className="bg-white p-6 rounded-lg shadow">
+
+            <h3 className="text-xl font-semibold mb-2">
+              Safety Tips
+            </h3>
+
+            <p className="text-gray-600">
+              View AI powered safety tips
+            </p>
+
+          </div>
+
+          {/* BOX 3 */}
+
+          <div className="bg-white p-6 rounded-lg shadow">
+
+            <h3 className="text-xl font-semibold mb-2">
+              Location Map
+            </h3>
+
+            <p className="text-gray-600">
+              Share and track safe routes
+            </p>
+
           </div>
 
         </div>
@@ -88,6 +122,7 @@ function Dashboard() {
       </div>
 
     </div>
+
   );
 }
 
