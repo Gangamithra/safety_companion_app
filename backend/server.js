@@ -7,201 +7,160 @@ const jwt = require("jsonwebtoken");
 const cors = require("cors");
 
 const app = express();
+const User = require("./models/User");
+
+/* ---------------- MIDDLEWARE ---------------- */
+
+app.use(cors({
+  origin: "http://localhost:3000"
+}));
 
 app.use(express.json());
-app.use(cors());
+
+/* ---------------- ROUTES ---------------- */
+
+const contactRoutes = require("./routes/contacts");
+app.use("/api/contacts", contactRoutes);
+
+const sosRoutes = require("./routes/sos");
+app.use("/api/sos", sosRoutes);
+
+/* ---------------- ENV VARIABLES ---------------- */
 
 const PORT = process.env.PORT || 5001;
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// CONNECT MONGODB FROM .ENV
+
+/* ---------------- CONNECT MONGODB ---------------- */
+
 console.log("MONGO URI:", process.env.MONGO_URI);
+
 mongoose.connect(process.env.MONGO_URI)
 .then(()=>console.log("MongoDB Connected"))
 .catch(err=>console.log(err));
 
 
-// USER SCHEMA
-const UserSchema = new mongoose.Schema({
-    name:String,
-    email:String,
-    password:String,
-    contacts:[
-        {
-            name:String,
-            phone:String
-        }
-    ]
-});
-
-const User = mongoose.model("User",UserSchema);
+/* ---------------- USER SCHEMA ---------------- */
 
 
 
 /* ---------------- SIGNUP ---------------- */
 
 app.post("/signup", async (req,res)=>{
-    try{
+  try{
 
-        const {name,email,password} = req.body;
+    const {name,email,password} = req.body;
 
-        const existingUser = await User.findOne({email});
+    const existingUser = await User.findOne({email});
 
-        if(existingUser){
-            return res.status(400).json({message:"User already exists"});
-        }
-
-        const hashedPassword = await bcrypt.hash(password,10);
-
-        const user = new User({
-            name,
-            email,
-            password:hashedPassword,
-            contacts:[]
-        });
-
-        await user.save();
-
-        res.json({message:"Signup successful"});
-
+    if(existingUser){
+      return res.status(400).json({message:"User already exists"});
     }
-    catch(err){
-        res.status(500).json({error:err.message});
-    }
+
+    const hashedPassword = await bcrypt.hash(password,10);
+
+    const user = new User({
+      name,
+      email,
+      password: hashedPassword
+    });
+
+    await user.save();
+
+    res.json({message:"Signup successful"});
+
+  }
+  catch(err){
+    res.status(500).json({error:err.message});
+  }
 });
-
 
 
 /* ---------------- LOGIN ---------------- */
 
 app.post("/login", async (req,res)=>{
-    try{
+  try{
 
-        const {email,password} = req.body;
+    const {email,password} = req.body;
 
-        const user = await User.findOne({email});
+    const user = await User.findOne({email});
 
-        if(!user){
-            return res.status(400).json({message:"User not found"});
-        }
-
-        const isMatch = await bcrypt.compare(password,user.password);
-
-        if(!isMatch){
-            return res.status(400).json({message:"Invalid password"});
-        }
-
-        const token = jwt.sign(
-            {id:user._id},
-            JWT_SECRET,
-            {expiresIn:"1h"}
-        );
-
-        res.json({
-            message:"Login successful",
-            token
-        });
-
+    if(!user){
+      return res.status(400).json({message:"User not found"});
     }
-    catch(err){
-        res.status(500).json({error:err.message});
+
+    const isMatch = await bcrypt.compare(password,user.password);
+
+    if(!isMatch){
+      return res.status(400).json({message:"Invalid password"});
     }
+
+    const token = jwt.sign(
+      {id:user._id},
+      JWT_SECRET,
+      {expiresIn:"1h"}
+    );
+
+    res.json({
+      message:"Login successful",
+      token
+    });
+
+  }
+  catch(err){
+    res.status(500).json({error:err.message});
+  }
 });
-
 
 
 /* ---------------- AUTH MIDDLEWARE ---------------- */
 
 function authMiddleware(req,res,next){
 
-    const authHeader = req.headers["authorization"];
+  const authHeader = req.headers["authorization"];
 
-    if(!authHeader){
-        return res.status(401).json({message:"Token missing"});
-    }
+  if(!authHeader){
+    return res.status(401).json({message:"Token missing"});
+  }
 
-    const token = authHeader.split(" ")[1];
+  const token = authHeader.split(" ")[1];
 
-    try{
+  try{
 
-        const decoded = jwt.verify(token,JWT_SECRET);
+    const decoded = jwt.verify(token,JWT_SECRET);
 
-        req.user = decoded;
+    req.user = decoded;
 
-        next();
+    next();
 
-    }
-    catch(err){
-        res.status(401).json({message:"Invalid Token"});
-    }
+  }
+  catch(err){
+    res.status(401).json({message:"Invalid Token"});
+  }
 
 }
-
 
 
 /* ---------------- GET USER INFO ---------------- */
 
 app.get("/api/auth/me", authMiddleware, async (req,res)=>{
 
-    try{
+  try{
 
-        const user = await User.findById(req.user.id).select("-password");
+    const user = await User.findById(req.user.id).select("-password");
 
-        res.json(user);
+    res.json(user);
 
-    }
-    catch(err){
-        res.status(500).json({error:err.message});
-    }
-
-});
-
-
-
-/* ---------------- ADD EMERGENCY CONTACT ---------------- */
-
-app.post("/api/contacts/add", authMiddleware, async (req,res)=>{
-
-    try{
-
-        const {name,phone} = req.body;
-
-        const user = await User.findById(req.user.id);
-
-        user.contacts.push({name,phone});
-
-        await user.save();
-
-        res.json({message:"Contact added",contacts:user.contacts});
-
-    }
-    catch(err){
-        res.status(500).json({error:err.message});
-    }
+  }
+  catch(err){
+    res.status(500).json({error:err.message});
+  }
 
 });
 
 
-
-/* ---------------- GET CONTACTS ---------------- */
-
-app.get("/api/contacts", authMiddleware, async (req,res)=>{
-
-    try{
-
-        const user = await User.findById(req.user.id);
-
-        res.json(user.contacts);
-
-    }
-    catch(err){
-        res.status(500).json({error:err.message});
-    }
-
-});
-
-
+/* ---------------- START SERVER ---------------- */
 
 app.listen(PORT,()=>{
-    console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

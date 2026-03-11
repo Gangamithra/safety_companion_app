@@ -1,54 +1,93 @@
-import express from "express";
-import Contact from "../models/Contact.js";
-import authMiddleware from "../middleware/authMiddleware.js";
-
+const express = require("express");
 const router = express.Router();
+const Contact = require("../models/Contact");
+const jwt = require("jsonwebtoken");
 
-/* ADD CONTACT */
+const JWT_SECRET = process.env.JWT_SECRET;
 
-router.post("/add", authMiddleware, async (req, res) => {
 
-  try {
+// AUTH MIDDLEWARE
+function authMiddleware(req,res,next){
 
-    const { name, phone, relationship } = req.body;
+  const authHeader = req.headers["authorization"];
 
-    const contact = new Contact({
-      userId: req.user.userId,
-      name,
-      phone,
-      relationship
-    });
-
-    await contact.save();
-
-    res.json({ msg: "Contact added", contact });
-
-  } catch (error) {
-
-    res.status(500).json({ msg: "Server error" });
-
+  if(!authHeader){
+    return res.status(401).json({message:"Token missing"});
   }
 
-});
+  const token = authHeader.split(" ")[1];
 
-/* GET CONTACTS */
-
-router.get("/", authMiddleware, async (req, res) => {
-
-  try {
-
-    const contacts = await Contact.find({
-      userId: req.user.userId
-    });
-
-    res.json(contacts);
-
-  } catch (error) {
-
-    res.status(500).json({ msg: "Server error" });
-
+  try{
+    const decoded = jwt.verify(token,JWT_SECRET);
+    req.user = decoded;
+    next();
   }
+  catch(err){
+    res.status(401).json({message:"Invalid Token"});
+  }
+}
 
+
+// GET CONTACTS (ONLY USER CONTACTS)
+
+router.get("/", authMiddleware, async (req,res)=>{
+
+  const contacts = await Contact.find({
+    userId: req.user.id
+  });
+
+  res.json(contacts);
 });
 
-export default router;
+
+// ADD CONTACT
+
+router.post("/", authMiddleware, async (req,res)=>{
+
+  const {name,phone} = req.body;
+
+  const newContact = new Contact({
+    name,
+    phone,
+    userId: req.user.id
+  });
+
+  await newContact.save();
+
+  res.json(newContact);
+});
+
+
+// DELETE CONTACT
+
+router.delete("/:id", authMiddleware, async (req,res)=>{
+
+  await Contact.findOneAndDelete({
+    _id:req.params.id,
+    userId:req.user.id
+  });
+
+  res.json({message:"Deleted"});
+});
+
+
+// UPDATE CONTACT
+
+router.put("/:id", authMiddleware, async (req,res)=>{
+
+  const {name,phone} = req.body;
+
+  const updated = await Contact.findOneAndUpdate(
+    {
+      _id:req.params.id,
+      userId:req.user.id
+    },
+    {name,phone},
+    {new:true}
+  );
+
+  res.json(updated);
+});
+
+
+module.exports = router;

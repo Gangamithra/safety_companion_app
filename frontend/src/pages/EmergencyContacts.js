@@ -1,156 +1,198 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 
-function EmergencyContacts() {
+function EmergencyContacts(){
 
-  const [contacts, setContacts] = useState([]);
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    relationship: ""
-  });
+  const API = "http://localhost:5001/api/contacts";
 
+  const [contacts,setContacts] = useState([]);
+  const [name,setName] = useState("");
+  const [phone,setPhone] = useState("");
+  const [error,setError] = useState("");
+  const [editId,setEditId] = useState(null);
+
+  // GET TOKEN
   const token = localStorage.getItem("token");
 
-  const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const fetchContacts = async () => {
-    try {
-
-      const res = await axios.get(
-        "http://localhost:5001/api/contacts",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      setContacts(res.data);
-
-    } catch (err) {
-      console.error(err);
+  const config = {
+    headers:{
+      Authorization:`Bearer ${token}`
     }
   };
 
-  useEffect(() => {
+  useEffect(()=>{
     fetchContacts();
-  }, []);
+  },[]);
 
-  const handleSubmit = async (e) => {
+  /* -------- FETCH CONTACTS -------- */
 
+  const fetchContacts = async()=>{
+    try{
+      const res = await axios.get(API,config);
+      setContacts(res.data);
+    }
+    catch(err){
+      console.log(err);
+    }
+  };
+
+  /* -------- PHONE VALIDATION -------- */
+  const validatePhone = (phone) => {
+
+    const phoneRegex = /^\+[1-9]\d{7,14}$/;
+  
+    if(!phoneRegex.test(phone)){
+      setError("Enter phone number with country code (Example: +919876543210)");
+      return false;
+    }
+  
+    return true;
+  };
+
+  /* -------- ADD / UPDATE CONTACT -------- */
+
+  const addContact = async(e)=>{
     e.preventDefault();
 
-    try {
+    if(!name || !phone){
+      setError("All fields are required");
+      return;
+    }
 
-      await axios.post(
-        "http://localhost:5001/api/contacts/add",
-        form,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+    try{
 
-      setForm({
-        name: "",
-        phone: "",
-        relationship: ""
-      });
+      if(editId){
+        await axios.put(`${API}/${editId}`,{name,phone},config);
+        setEditId(null);
+      }
+      else{
+        await axios.post(API,{name,phone},config);
+      }
+
+      setName("");
+      setPhone("");
+      setError("");
 
       fetchContacts();
 
-    } catch (err) {
-      console.error(err);
+    }
+    catch(err){
+      console.log(err);
     }
   };
 
-  return (
-    <div className="p-10">
+  /* -------- DELETE CONTACT -------- */
 
-      <h1 className="text-3xl font-bold mb-6">
-        Emergency Contacts
-      </h1>
+  const deleteContact = async(id)=>{
+    try{
+      await axios.delete(`${API}/${id}`,config);
+      fetchContacts();
+    }
+    catch(err){
+      console.log(err);
+    }
+  };
 
-      {/* Add Contact Form */}
+  /* -------- EDIT CONTACT -------- */
 
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-xl shadow mb-8 w-96"
+  const editContact = (contact)=>{
+    setName(contact.name);
+    setPhone(contact.phone);
+    setEditId(contact._id);
+  };
+
+  return(
+
+  <div className="min-h-screen bg-gray-900 text-white p-10">
+
+    <h1 className="text-3xl font-bold mb-8 text-center">
+      Emergency Contacts
+    </h1>
+
+    {/* FORM */}
+
+    <form
+      onSubmit={addContact}
+      className="bg-gray-800 p-6 rounded-xl w-96 mx-auto mb-10"
+    >
+
+      <input
+        type="text"
+        placeholder="Contact Name"
+        value={name}
+        onChange={(e)=>setName(e.target.value)}
+        className="w-full p-3 mb-4 rounded bg-gray-700 border border-gray-600"
+      />
+
+      <input
+        type="text"
+        placeholder="+919876543210"
+        value={phone}
+        onChange={(e)=>setPhone(e.target.value)}
+        className="w-full p-3 mb-4 rounded bg-gray-700 border border-gray-600"
+      />
+
+      {error && (
+        <p className="text-red-400 mb-3 text-sm">
+          {error}
+        </p>
+      )}
+
+      <button
+        type="submit"
+        className="w-full bg-blue-600 py-3 rounded hover:bg-blue-700"
       >
+        {editId ? "Update Contact" : "Add Contact"}
+      </button>
 
-        <input
-          type="text"
-          name="name"
-          placeholder="Contact Name"
-          value={form.name}
-          onChange={handleChange}
-          className="w-full p-2 mb-3 border rounded"
-          required
-        />
+    </form>
 
-        <input
-          type="text"
-          name="phone"
-          placeholder="Phone Number"
-          value={form.phone}
-          onChange={handleChange}
-          className="w-full p-2 mb-3 border rounded"
-          required
-        />
 
-        <input
-          type="text"
-          name="relationship"
-          placeholder="Relationship"
-          value={form.relationship}
-          onChange={handleChange}
-          className="w-full p-2 mb-3 border rounded"
-        />
+    {/* CONTACT LIST */}
 
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded"
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      {contacts.map((contact)=>(
+        <div
+          key={contact._id}
+          className="bg-gray-800 p-6 rounded-xl shadow-lg"
         >
-          Add Contact
-        </button>
 
-      </form>
+          <h2 className="text-xl font-semibold">
+            {contact.name}
+          </h2>
 
-      {/* Contact List */}
+          <p className="text-gray-400 mt-2">
+            {contact.phone}
+          </p>
 
-      <div className="grid grid-cols-3 gap-4">
+          <div className="flex gap-3 mt-4">
 
-        {contacts.map((contact) => (
+            <button
+              onClick={()=>editContact(contact)}
+              className="bg-yellow-500 px-4 py-2 rounded hover:bg-yellow-600"
+            >
+              Edit
+            </button>
 
-          <div
-            key={contact._id}
-            className="bg-white p-4 rounded shadow"
-          >
-
-            <h3 className="font-bold">
-              {contact.name}
-            </h3>
-
-            <p>{contact.phone}</p>
-
-            <p className="text-gray-500">
-              {contact.relationship}
-            </p>
+            <button
+              onClick={()=>deleteContact(contact._id)}
+              className="bg-red-500 px-4 py-2 rounded hover:bg-red-600"
+            >
+              Delete
+            </button>
 
           </div>
 
-        ))}
-
-      </div>
+        </div>
+      ))}
 
     </div>
+
+  </div>
+
   );
+
 }
 
 export default EmergencyContacts;

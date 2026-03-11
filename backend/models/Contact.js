@@ -1,27 +1,14 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
-const contactSchema = new mongoose.Schema({
+const ContactSchema = new mongoose.Schema({
+  name: String,
+  phone: String,
 
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true
-  },
-
-  name: {
-    type: String,
-    required: true
-  },
-
-  phone: {
-    type: String,
-    required: true
-  },
-
-  relationship: {
-    type: String
   }
+});
 
-}, { timestamps: true });
-
-export default mongoose.model("Contact", contactSchema);
+module.exports = mongoose.model("Contact", ContactSchema);

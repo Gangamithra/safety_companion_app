@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 function Dashboard() {
 
@@ -27,6 +28,54 @@ function Dashboard() {
 
   }, [navigate]);
 
+  /* ---------------- SOS FUNCTION ---------------- */
+
+  const sendSOS = () => {
+
+    const token = localStorage.getItem("token");
+
+    if (!navigator.geolocation) {
+      alert("Geolocation not supported");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+
+      async (position) => {
+
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        try {
+
+          const res = await axios.post(
+            "http://localhost:5001/api/sos",
+            { lat, lng },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            }
+          );
+
+          alert(res.data.message);
+
+        }
+        catch (err) {
+          console.log(err);
+          alert("Failed to send SOS alert");
+        }
+
+      },
+
+      () => {
+        alert("Location access denied");
+      }
+
+    );
+
+  };
+
   if (!user) {
     return <div className="p-10 text-center text-xl">Loading...</div>;
   }
@@ -45,11 +94,17 @@ function Dashboard() {
 
         <ul className="space-y-4">
 
-          <li className="cursor-pointer hover:text-gray-300">
+          <li 
+            className="cursor-pointer hover:text-gray-300"
+            onClick={() => navigate("/dashboard")}
+          >
             Dashboard
           </li>
 
-          <li className="cursor-pointer hover:text-gray-300">
+          <li 
+            className="cursor-pointer hover:text-gray-300"
+            onClick={() => navigate("/emergencycontacts")}
+          >
             Emergency Contacts
           </li>
 
@@ -57,7 +112,10 @@ function Dashboard() {
             Safety Tips
           </li>
 
-          <li className="cursor-pointer hover:text-gray-300">
+          <li 
+            className="cursor-pointer hover:text-gray-300"
+            onClick={() => navigate("/map")}
+          >
             Map
           </li>
 
@@ -73,11 +131,27 @@ function Dashboard() {
           Welcome {user.name}
         </h1>
 
+        {/* SOS BUTTON */}
+
+        <div className="mb-10">
+
+          <button
+            onClick={sendSOS}
+            className="bg-red-600 text-white px-8 py-4 rounded-lg text-xl font-bold hover:bg-red-700 transition"
+          >
+            🚨 SEND SOS ALERT
+          </button>
+
+        </div>
+
         <div className="grid grid-cols-3 gap-6">
 
-          {/* BOX 1 */}
+          {/* EMERGENCY CONTACTS CARD */}
 
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div
+            className="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-lg transition"
+            onClick={() => navigate("/emergencycontacts")}
+          >
 
             <h3 className="text-xl font-semibold mb-2">
               Emergency Contacts
@@ -89,7 +163,7 @@ function Dashboard() {
 
           </div>
 
-          {/* BOX 2 */}
+          {/* SAFETY TIPS CARD */}
 
           <div className="bg-white p-6 rounded-lg shadow">
 
@@ -103,9 +177,12 @@ function Dashboard() {
 
           </div>
 
-          {/* BOX 3 */}
+          {/* MAP CARD */}
 
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div
+            className="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-lg transition"
+            onClick={() => navigate("/map")}
+          >
 
             <h3 className="text-xl font-semibold mb-2">
               Location Map

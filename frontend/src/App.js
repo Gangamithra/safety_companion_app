@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import MapPage from "./pages/MapPage";
+import EmergencyContacts from "./pages/EmergencyContacts";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/map" element={<MapPage />} />
+        <Route path="/emergencycontacts" element={<EmergencyContacts />} />
       </Routes>
 
     </Router>
