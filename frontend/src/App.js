@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import MapPage from "./pages/MapPage";
 import EmergencyContacts from "./pages/EmergencyContacts";
 
+
 function App() {
   return (
     <Router>
