@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import {
   GoogleMap,
@@ -6,7 +5,8 @@ import {
   Marker,
   Autocomplete,
   DirectionsRenderer,
-  Circle
+  Circle,
+  InfoWindow
 } from "@react-google-maps/api";
 
 const libraries = ["places"];
@@ -30,30 +30,35 @@ function MapPage() {
   const [directions, setDirections] = useState(null);
   const [routes, setRoutes] = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(0);
+
   const [safetyScores, setSafetyScores] = useState([]);
+  const [routeStats, setRouteStats] = useState([]);
 
   const [dangerZones, setDangerZones] = useState([]);
+  const [selectedZone, setSelectedZone] = useState(null);
 
-  /* LIVE USER LOCATION */
+  const [aiRecommendation, setAiRecommendation] = useState("");
+
+  /* LIVE LOCATION */
 
   const getUserLocation = () => {
+    navigator.geolocation.watchPosition(
+      (position) => {
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
 
-    navigator.geolocation.watchPosition((position) => {
-
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-
-      const location = { lat, lng };
-
-      setCenter(location);
-      setOrigin(location);
-      setUserLocation(location);
-
-    });
-
+        setCenter(location);
+        setOrigin(location);
+        setUserLocation(location);
+      },
+      () => alert("Location access denied"),
+      { enableHighAccuracy: true }
+    );
   };
 
-  /* SAFETY SCORE + DANGER ZONES */
+  /* SAFETY SCORE */
 
   const calculateSafetyScores = async (routesData) => {
 
@@ -61,89 +66,119 @@ function MapPage() {
       document.createElement("div")
     );
 
+    let zones = [];
+    let statsArray = [];
+
     const scores = await Promise.all(
       routesData.map(async (route) => {
 
         const leg = route.legs[0];
-
         const midIndex = Math.floor(leg.steps.length / 2);
-        const midpoint = leg.steps[midIndex].end_location;
+
+        const midpoint =
+          leg.steps[midIndex]?.end_location ||
+          leg.steps[0]?.end_location;
+
+        if (!midpoint) return 5;
 
         const request = {
           location: midpoint,
-          radius: 1000,
-          keyword: "restaurant OR shop OR mall OR hospital OR police"
+          radius: 1500,
+          keyword: "shop OR mall OR market OR hospital OR police OR restaurant"
         };
 
         const places = await new Promise((resolve) => {
-
           service.nearbySearch(request, (results, status) => {
-
-            if (
-              status ===
-              window.google.maps.places.PlacesServiceStatus.OK
-            ) {
+            if (status === window.google.maps.places.PlacesServiceStatus.OK)
               resolve(results);
-            } else {
-              resolve([]);
-            }
-
+            else resolve([]);
           });
-
         });
 
-        let shopCount = 0;
-        let hospitalCount = 0;
-        let policeCount = 0;
+        let shops = 0, hospitals = 0, police = 0;
 
-        places.forEach((place) => {
-
-          const types = place.types || [];
+        places.forEach((p) => {
+          const types = p.types || [];
 
           if (
-            types.includes("restaurant") ||
             types.includes("store") ||
-            types.includes("shopping_mall")
-          ) shopCount++;
+            types.includes("shopping_mall") ||
+            types.includes("restaurant")
+          ) shops++;
 
-          if (types.includes("hospital")) hospitalCount++;
-
-          if (types.includes("police")) policeCount++;
-
+          if (types.includes("hospital")) hospitals++;
+          if (types.includes("police")) police++;
         });
 
-        /* SAFETY FORMULA */
+        let score = 0;
 
-        let score = 5;
+        score += Math.min(shops * 1.5, 5);
+        score += Math.min(hospitals * 2, 3);
+        score += Math.min(police * 3, 3);
 
-        score += Math.min(shopCount / 5, 3);
-        score += Math.min(hospitalCount, 1);
-        score += Math.min(policeCount, 1);
+        if (shops === 0 && hospitals === 0 && police === 0) {
+          score = 2;
+        }
 
         if (score > 10) score = 10;
 
-        /* DANGER ZONE if score < 6 */
+        /* DANGER ZONES */
 
-        if (score < 6) {
-          setDangerZones((prev) => [
-            ...prev,
-            {
-              lat: midpoint.lat(),
-              lng: midpoint.lng()
-            }
-          ]);
+        if (score < 7) {
+          let reason = "Low safety area";
+
+          if (shops === 0) reason = "No nearby shops (isolated)";
+          else if (hospitals === 0) reason = "No hospital nearby";
+          else if (police === 0) reason = "No police presence";
+
+          zones.push({
+            lat: midpoint.lat(),
+            lng: midpoint.lng(),
+            reason
+          });
         }
+
+        statsArray.push({ shops, hospitals, police });
 
         return Math.round(score);
 
       })
     );
 
-    return scores;
+    setDangerZones(zones);
+    setRouteStats(statsArray);
 
+    return { scores, statsArray };
   };
 
-  /* ROUTE CALCULATION */
+  /* 🔥 SMART AI-LIKE RECOMMENDATION (NO API) */
+
+  const getAIRecommendation = (scores, stats) => {
+
+    const safestIndex = scores.indexOf(Math.max(...scores));
+    const safest = stats[safestIndex];
+
+    let reasons = [];
+
+    if (safest.shops > 5) reasons.push("high crowd activity");
+    else if (safest.shops > 2) reasons.push("moderate crowd presence");
+
+    if (safest.hospitals > 0) reasons.push("nearby hospitals");
+
+    if (safest.police > 0) reasons.push("police presence");
+
+    if (reasons.length === 0) {
+      reasons.push("relatively better conditions compared to other routes");
+    }
+
+    const reasonText = reasons.join(", ");
+
+    setAiRecommendation(
+      `Route ${safestIndex + 1} is recommended as the safest because it has ${reasonText}, making it more secure than the other available routes.`
+    );
+  };
+
+  /* ROUTE */
 
   const calculateRoute = async (destination) => {
 
@@ -156,10 +191,9 @@ function MapPage() {
       new window.google.maps.DirectionsService();
 
     const result = await directionsService.route({
-      origin: origin,
-      destination: destination,
-      travelMode:
-        window.google.maps.TravelMode.DRIVING,
+      origin,
+      destination,
+      travelMode: window.google.maps.TravelMode.DRIVING,
       provideRouteAlternatives: true
     });
 
@@ -167,31 +201,28 @@ function MapPage() {
     setRoutes(result.routes);
     setSelectedRoute(0);
 
-    const scores = await calculateSafetyScores(result.routes);
+    const { scores, statsArray } =
+      await calculateSafetyScores(result.routes);
 
     setSafetyScores(scores);
 
+    getAIRecommendation(scores, statsArray); // 🔥 updated
   };
 
-  /* DESTINATION SEARCH */
+  /* DESTINATION */
 
   const onPlaceChanged = (autocomplete) => {
 
     const place = autocomplete.getPlace();
+    if (!place.geometry) return;
 
-    if (place.geometry) {
+    const destination = {
+      lat: place.geometry.location.lat(),
+      lng: place.geometry.location.lng()
+    };
 
-      const lat = place.geometry.location.lat();
-      const lng = place.geometry.location.lng();
-
-      const destination = { lat, lng };
-
-      setCenter(destination);
-
-      calculateRoute(destination);
-
-    }
-
+    setCenter(destination);
+    calculateRoute(destination);
   };
 
   if (!isLoaded) return <div>Loading Map...</div>;
@@ -203,92 +234,67 @@ function MapPage() {
 
     <div style={{ display: "flex" }}>
 
-      {/* ROUTE PANEL */}
+      {/* SIDE PANEL */}
 
-      <div
-        style={{
-          width: "300px",
-          padding: "15px",
-          background: "#ffffff",
-          overflowY: "auto",
-          height: "100vh",
-          borderRight: "1px solid #ddd"
-        }}
-      >
+      <div style={{
+        width: "320px",
+        padding: "15px",
+        background: "#fff",
+        height: "100vh",
+        overflowY: "auto"
+      }}>
 
-        <h2>Available Routes</h2>
+        <h2>Routes</h2>
 
-        {routes.map((route, index) => {
+        {routes.map((route, i) => {
 
           const leg = route.legs[0];
-          const score = safetyScores[index] || "...";
-
-          const safest =
-            score === safestScore;
+          const score = safetyScores[i] || "...";
+          const safest = score === safestScore;
 
           return (
-
             <div
-              key={index}
-              onClick={() => setSelectedRoute(index)}
+              key={i}
+              onClick={() => setSelectedRoute(i)}
               style={{
                 padding: "10px",
                 marginBottom: "10px",
-                border: "1px solid #ddd",
-                cursor: "pointer",
-                background:
-                  safest
-                    ? "#d4edda"
-                    : selectedRoute === index
-                    ? "#e8f0fe"
-                    : "#f8f8f8"
+                background: safest ? "#d4edda" : "#f1f1f1",
+                cursor: "pointer"
               }}
             >
-
-              <h4>
-                Route {index + 1} {safest && "⭐ Safest"}
-              </h4>
-
-              <p>Distance: {leg.distance.text}</p>
-
-              <p>Time: {leg.duration.text}</p>
-
-              <p>Safety Score: {score}/10</p>
-
+              <h4>Route {i + 1} {safest && "⭐"}</h4>
+              <p>{leg.distance.text} • {leg.duration.text}</p>
+              <p>Safety: {score}/10</p>
             </div>
-
           );
-
         })}
+
+        {aiRecommendation && (
+          <div style={{ marginTop: "15px", background: "#eef", padding: "10px" }}>
+            <h4>AI Recommendation</h4>
+            <p>{aiRecommendation}</p>
+          </div>
+        )}
 
       </div>
 
-      {/* MAP AREA */}
+      {/* MAP */}
 
       <div style={{ flex: 1, padding: "15px" }}>
 
-        <h2>Safe Route Navigation</h2>
-
-        <p style={{ color: "#555", fontSize: "14px" }}>
-          Click <b>Start Live Location</b> first, then search destination.
-        </p>
+        <p>👉 Click <b>Start Live Location</b> first</p>
 
         <Autocomplete
-          onLoad={(auto) =>
-            (window.autocomplete = auto)
-          }
-          onPlaceChanged={() =>
-            onPlaceChanged(window.autocomplete)
-          }
+          onLoad={(a) => (window.autocomplete = a)}
+          onPlaceChanged={() => onPlaceChanged(window.autocomplete)}
         >
           <input
-            type="text"
             placeholder="Search destination"
             style={{
               width: "100%",
               padding: "12px",
-              marginBottom: "10px",
-              border: "2px solid #2563eb",
+              border: "2px solid blue",
               borderRadius: "6px"
             }}
           />
@@ -297,14 +303,12 @@ function MapPage() {
         <button
           onClick={getUserLocation}
           style={{
-            backgroundColor: "#2563eb",
-            color: "white",
-            padding: "10px 16px",
+            background: "blue",
+            color: "#fff",
+            padding: "10px",
+            marginTop: "10px",
             border: "none",
-            borderRadius: "6px",
-            fontWeight: "600",
-            cursor: "pointer",
-            marginBottom: "15px"
+            borderRadius: "6px"
           }}
         >
           Start Live Location
@@ -316,23 +320,7 @@ function MapPage() {
           center={center}
         >
 
-          {/* LIVE USER BLUE DOT */}
-
-          {userLocation && (
-            <Marker
-              position={userLocation}
-              icon={{
-                path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 8,
-                fillColor: "#4285F4",
-                fillOpacity: 1,
-                strokeWeight: 2,
-                strokeColor: "white"
-              }}
-            />
-          )}
-
-          {/* ROUTES */}
+          {userLocation && <Marker position={userLocation} />}
 
           {directions && (
             <DirectionsRenderer
@@ -341,31 +329,38 @@ function MapPage() {
             />
           )}
 
-          {/* DANGER ZONES */}
-
           {dangerZones.map((zone, i) => (
             <Circle
               key={i}
               center={zone}
-              radius={300}
+              radius={400}
+              onClick={() => setSelectedZone(zone)}
               options={{
                 fillColor: "red",
-                fillOpacity: 0.35,
-                strokeColor: "red",
-                strokeOpacity: 0.8
+                fillOpacity: 0.4,
+                strokeColor: "red"
               }}
             />
           ))}
+
+          {selectedZone && (
+            <InfoWindow
+              position={selectedZone}
+              onCloseClick={() => setSelectedZone(null)}
+            >
+              <div>
+                <strong>Danger Zone</strong>
+                <p>{selectedZone.reason}</p>
+              </div>
+            </InfoWindow>
+          )}
 
         </GoogleMap>
 
       </div>
 
     </div>
-
   );
-
 }
 
 export default MapPage;
-
