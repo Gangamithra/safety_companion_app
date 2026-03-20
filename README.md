@@ -1,70 +1,175 @@
-# Getting Started with Create React App
+Safety Companion
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A full-stack web application designed to enhance personal safety for individuals, especially women and solo travelers. The platform provides real-time location tracking, safety route analysis, emergency contact management, and instant SOS alerts.
 
-## Available Scripts
+Features
+1. Authentication
 
-In the project directory, you can run:
+Secure user registration and login using JWT
 
-### `npm start`
+Password encryption with bcrypt
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Forgot password and reset functionality
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+2. Dashboard
 
-### `npm test`
+Personalized user dashboard
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Quick access to key features
 
-### `npm run build`
+Voice-based protection trigger
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+SOS emergency alert system
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+3. Safety Map
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Live location tracking
 
-### `npm run eject`
+Multiple route suggestions using Google Maps
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Safety scoring based on nearby places (police, hospitals, public areas)
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Identification of unsafe zones
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Route insights with detailed explanations
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+4. Emergency Contacts
 
-## Learn More
+Add, edit, and delete emergency contacts
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Secure storage with authentication
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Quick access during emergencies
 
-### Code Splitting
+5. Safety Tips
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+Curated safety guidelines
 
-### Analyzing the Bundle Size
+Interactive checklist for readiness
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Static safety recommendations for real-world situations
 
-### Making a Progressive Web App
+Tech Stack
+Frontend
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+React.js
 
-### Advanced Configuration
+Tailwind CSS
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+Axios
 
-### Deployment
+Google Maps JavaScript API
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+Backend
 
-### `npm run build` fails to minify
+Node.js
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Express.js
+
+MongoDB (Mongoose)
+
+JWT Authentication
+
+bcrypt for password hashing
+
+Project Structure
+client/
+  ├── src/
+  │   ├── pages/
+  │   ├── components/
+  │   └── context/
+
+server/
+  ├── models/
+  ├── routes/
+  ├── middleware/
+  └── server.js
+Installation & Setup
+1. Clone the repository
+git clone <your-repo-link>
+cd project-folder
+2. Backend Setup
+cd server
+npm install
+
+Create a .env file:
+
+MONGO_URI=your_mongodb_uri
+JWT_SECRET=your_secret_key
+PORT=5001
+
+Run backend:
+
+npm start
+3. Frontend Setup
+cd client
+npm install
+
+Create .env:
+
+REACT_APP_GOOGLE_MAPS_API_KEY=your_api_key
+
+Run frontend:
+
+npm start
+API Endpoints
+Auth
+
+POST /signup
+
+POST /login
+
+GET /api/auth/me
+
+Password Reset
+
+POST /api/forgot-password
+
+POST /api/reset-password/:token
+
+Contacts
+
+GET /api/contacts
+
+POST /api/contacts
+
+PUT /api/contacts/:id
+
+DELETE /api/contacts/:id
+
+SOS
+
+POST /api/sos
+
+Deployment (Overview)
+
+Frontend: Vercel / Netlify
+
+Backend: Render / Railway
+
+Database: MongoDB Atlas
+
+Steps:
+
+Push code to GitHub
+
+Deploy backend and configure environment variables
+
+Deploy frontend and connect API URLs
+
+Update CORS settings in backend
+
+Future Improvements
+
+Real-time alerts using notifications
+
+Integration with emergency services APIs
+
+Advanced AI-based route safety prediction
+
+Mobile application version
+
+Author
+
+Gangamithra R
+
