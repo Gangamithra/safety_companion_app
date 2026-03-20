@@ -9,24 +9,36 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import MapPage from "./pages/MapPage";
 import EmergencyContacts from "./pages/EmergencyContacts";
+import SafetyTips from "./pages/SafetyTips";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
+/* ✅ IMPORT CONTEXT */
+import { VoiceProvider } from "./context/VoiceContext";
 
 function App() {
   return (
-    <Router>
+    <VoiceProvider>   {/* ✅ GLOBAL WRAP */}
 
-      <Navbar />
+      <Router>
 
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/map" element={<MapPage />} />
-        <Route path="/emergencycontacts" element={<EmergencyContacts />} />
-      </Routes>
+        <Navbar />
 
-    </Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/map" element={<MapPage />} />
+          <Route path="/emergencycontacts" element={<EmergencyContacts />} />
+          <Route path="/safetytips" element={<SafetyTips />} />
+          <Route path="/forgotpassword" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+        </Routes>
+
+      </Router>
+
+    </VoiceProvider>
   );
 }
 

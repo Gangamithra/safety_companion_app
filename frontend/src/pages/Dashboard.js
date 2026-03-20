@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { VoiceContext } from "../context/VoiceContext";
 
 function Dashboard() {
 
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
+
+  const { startListening, stopListening, isListening } = useContext(VoiceContext);
 
   useEffect(() => {
 
@@ -17,10 +20,7 @@ function Dashboard() {
     }
 
     fetch("http://localhost:5001/api/auth/me", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => res.json())
       .then(data => setUser(data))
@@ -28,94 +28,59 @@ function Dashboard() {
 
   }, [navigate]);
 
-  /* ---------------- SOS FUNCTION ---------------- */
-
+  /* SOS */
   const sendSOS = () => {
 
     const token = localStorage.getItem("token");
 
-    if (!navigator.geolocation) {
-      alert("Geolocation not supported");
-      return;
-    }
+    navigator.geolocation.getCurrentPosition(async (position) => {
 
-    navigator.geolocation.getCurrentPosition(
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
 
-      async (position) => {
+      try {
+        const res = await axios.post(
+          "http://localhost:5001/api/sos",
+          { lat, lng },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-
-        try {
-
-          const res = await axios.post(
-            "http://localhost:5001/api/sos",
-            { lat, lng },
-            {
-              headers: {
-                Authorization: `Bearer ${token}`
-              }
-            }
-          );
-
-          alert(res.data.message);
-
-        }
-        catch (err) {
-          console.log(err);
-          alert("Failed to send SOS alert");
-        }
-
-      },
-
-      () => {
-        alert("Location access denied");
+        alert(res.data.message);
+      } catch {
+        alert("Failed to send SOS");
       }
 
-    );
-
+    });
   };
 
-  if (!user) {
-    return <div className="p-10 text-center text-xl">Loading...</div>;
-  }
+  if (!user) return <div className="text-white p-10">Loading...</div>;
 
   return (
 
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-900 text-white">
 
-      {/* SIDEBAR */}
+      {/* 🔥 MODERN SIDEBAR */}
+      <div className="w-64 bg-gray-900/80 backdrop-blur-lg border-r border-gray-700 p-6">
 
-      <div className="w-64 bg-black text-white p-6">
-
-        <h2 className="text-2xl font-bold mb-6">
+        <h2 className="text-2xl font-bold mb-10 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
           AI Companion
         </h2>
 
-        <ul className="space-y-4">
+        <ul className="space-y-5 text-gray-300">
 
-          <li 
-            className="cursor-pointer hover:text-gray-300"
-            onClick={() => navigate("/dashboard")}
-          >
+          <li onClick={() => navigate("/dashboard")} className="cursor-pointer hover:text-blue-400">
             Dashboard
           </li>
 
-          <li 
-            className="cursor-pointer hover:text-gray-300"
-            onClick={() => navigate("/emergencycontacts")}
-          >
+          <li onClick={() => navigate("/emergencycontacts")} className="cursor-pointer hover:text-blue-400">
             Emergency Contacts
           </li>
 
-          <li className="cursor-pointer hover:text-gray-300">
+          <li onClick={() => navigate("/safetytips")} className="cursor-pointer hover:text-blue-400">
             Safety Tips
           </li>
 
-          <li 
-            className="cursor-pointer hover:text-gray-300"
-            onClick={() => navigate("/map")}
-          >
+          <li onClick={() => navigate("/map")} className="cursor-pointer hover:text-blue-400">
             Map
           </li>
 
@@ -123,74 +88,162 @@ function Dashboard() {
 
       </div>
 
-      {/* MAIN */}
+      {/* 🔥 MAIN CONTENT */}
+      <div className="flex-1 px-10 py-8">
 
-      <div className="flex-1 p-10">
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-10">
 
-        <h1 className="text-3xl font-bold mb-8">
-          Welcome {user.name}
-        </h1>
+          <div>
+            <h1 className="text-3xl font-bold text-white">
+              Welcome, <span className="text-blue-400">{user.name}</span>
+            </h1>
+            <p className="text-gray-400 text-sm mt-1">
+              Stay safe and connected at all times
+            </p>
+          </div>
 
-        {/* SOS BUTTON */}
+          {/* ACTIONS */}
+          <div className="flex items-center gap-4">
 
-        <div className="mb-10">
+            {/* VOICE */}
+            {!isListening ? (
+              <button
+                onClick={startListening}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 
+                           hover:from-blue-700 hover:to-purple-700 
+                           px-5 py-2.5 rounded-lg font-medium shadow-md"
+              >
+                🎤 Start
+              </button>
+            ) : (
+              <button
+                onClick={stopListening}
+                className="bg-gray-700 hover:bg-gray-600 px-5 py-2.5 rounded-lg"
+              >
+                ⏹ Stop
+              </button>
+            )}
 
-          <button
-            onClick={sendSOS}
-            className="bg-red-600 text-white px-8 py-4 rounded-lg text-xl font-bold hover:bg-red-700 transition"
-          >
-            🚨 SEND SOS ALERT
-          </button>
+            {/* STATUS */}
+            <span className={`text-sm ${isListening ? "text-green-400" : "text-gray-500"}`}>
+              {isListening ? "Listening..." : "Inactive"}
+            </span>
+
+            {/* SOS */}
+            <button
+              onClick={sendSOS}
+              className="bg-gradient-to-r from-red-500 to-pink-500 
+                         hover:from-red-600 hover:to-pink-600 
+                         px-6 py-2.5 rounded-lg font-semibold shadow-md"
+            >
+              🚨 SOS
+            </button>
+
+          </div>
 
         </div>
 
-        <div className="grid grid-cols-3 gap-6">
+        {/* 🔥 MAIN GRID */}
+        <div className="grid grid-cols-3 gap-6 mb-10">
 
-          {/* EMERGENCY CONTACTS CARD */}
-
+          {/* CARD 1 */}
           <div
-            className="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-lg transition"
             onClick={() => navigate("/emergencycontacts")}
+            className="bg-gray-800 p-6 rounded-2xl border border-gray-700 
+                       hover:scale-[1.02] transition cursor-pointer"
           >
-
-            <h3 className="text-xl font-semibold mb-2">
+            <h3 className="text-xl font-semibold text-blue-400 mb-2">
               Emergency Contacts
             </h3>
-
-            <p className="text-gray-600">
-              Manage your emergency contacts
+            <p className="text-gray-400 text-sm">
+              Manage trusted contacts
             </p>
-
           </div>
 
-          {/* SAFETY TIPS CARD */}
-
-          <div className="bg-white p-6 rounded-lg shadow">
-
-            <h3 className="text-xl font-semibold mb-2">
+          {/* CARD 2 */}
+          <div
+            onClick={() => navigate("/safetytips")}
+            className="bg-gray-800 p-6 rounded-2xl border border-gray-700 
+                       hover:scale-[1.02] transition cursor-pointer"
+          >
+            <h3 className="text-xl font-semibold text-blue-400 mb-2">
               Safety Tips
             </h3>
-
-            <p className="text-gray-600">
-              View AI powered safety tips
+            <p className="text-gray-400 text-sm">
+              Smart suggestions & checklist
             </p>
+          </div>
+
+          {/* CARD 3 */}
+          <div
+            onClick={() => navigate("/map")}
+            className="bg-gray-800 p-6 rounded-2xl border border-gray-700 
+                       hover:scale-[1.02] transition cursor-pointer"
+          >
+            <h3 className="text-xl font-semibold text-blue-400 mb-2">
+              Location Map
+            </h3>
+            <p className="text-gray-400 text-sm">
+              Track safe routes
+            </p>
+          </div>
+
+        </div>
+
+        {/* 🔥 EXTRA SECTION (FILLS EMPTY SPACE) */}
+        <div className="grid grid-cols-2 gap-6">
+
+          {/* SAFETY STATUS */}
+          <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700">
+
+            <h3 className="text-lg font-semibold mb-4 text-blue-400">
+              Safety Status
+            </h3>
+
+            <p className="text-gray-400 text-sm mb-3">
+              Voice monitoring is currently:
+            </p>
+
+            <span className={`text-lg font-semibold ${
+              isListening ? "text-green-400" : "text-gray-500"
+            }`}>
+              {isListening ? "Active & Protecting" : "Inactive"}
+            </span>
 
           </div>
 
-          {/* MAP CARD */}
+          {/* QUICK ACTIONS */}
+          <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700">
 
-          <div
-            className="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-lg transition"
-            onClick={() => navigate("/map")}
-          >
-
-            <h3 className="text-xl font-semibold mb-2">
-              Location Map
+            <h3 className="text-lg font-semibold mb-4 text-blue-400">
+              Quick Actions
             </h3>
 
-            <p className="text-gray-600">
-              Share and track safe routes
-            </p>
+            <div className="flex flex-col gap-3">
+
+              <button
+                onClick={sendSOS}
+                className="bg-gray-700 hover:bg-gray-600 py-2 rounded-lg text-sm"
+              >
+                Send Emergency Alert
+              </button>
+
+              <button
+                onClick={() => navigate("/map")}
+                className="bg-gray-700 hover:bg-gray-600 py-2 rounded-lg text-sm"
+              >
+                Open Safe Map
+              </button>
+
+              <button
+                onClick={() => navigate("/emergencycontacts")}
+                className="bg-gray-700 hover:bg-gray-600 py-2 rounded-lg text-sm"
+              >
+                View Contacts
+              </button>
+
+            </div>
 
           </div>
 
@@ -199,7 +252,6 @@ function Dashboard() {
       </div>
 
     </div>
-
   );
 }
 

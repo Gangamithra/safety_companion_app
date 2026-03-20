@@ -13,7 +13,7 @@ const libraries = ["places"];
 
 const mapContainerStyle = {
   width: "100%",
-  height: "100vh"
+  height: "100%"
 };
 
 function MapPage() {
@@ -35,31 +35,28 @@ function MapPage() {
   const [routeStats, setRouteStats] = useState([]);
 
   const [dangerZones, setDangerZones] = useState([]);
-  const [selectedZone, setSelectedZone] = useState(null);
+  const [hoveredZone, setHoveredZone] = useState(null);
 
   const [aiRecommendation, setAiRecommendation] = useState("");
 
   /* LIVE LOCATION */
-
   const getUserLocation = () => {
     navigator.geolocation.watchPosition(
       (position) => {
-        const location = {
+        const loc = {
           lat: position.coords.latitude,
           lng: position.coords.longitude
         };
-
-        setCenter(location);
-        setOrigin(location);
-        setUserLocation(location);
+        setCenter(loc);
+        setOrigin(loc);
+        setUserLocation(loc);
       },
       () => alert("Location access denied"),
       { enableHighAccuracy: true }
     );
   };
 
-  /* SAFETY SCORE */
-
+  /* SAFETY */
   const calculateSafetyScores = async (routesData) => {
 
     const service = new window.google.maps.places.PlacesService(
@@ -84,7 +81,8 @@ function MapPage() {
         const request = {
           location: midpoint,
           radius: 1500,
-          keyword: "shop OR mall OR market OR hospital OR police OR restaurant"
+          keyword: "shop OR mall OR market OR hospital OR police OR restaurant",
+          type: "point_of_interest"
         };
 
         const places = await new Promise((resolve) => {
@@ -99,37 +97,31 @@ function MapPage() {
 
         places.forEach((p) => {
           const types = p.types || [];
-
-          if (
-            types.includes("store") ||
-            types.includes("shopping_mall") ||
-            types.includes("restaurant")
-          ) shops++;
-
+          if (types.includes("store") || types.includes("shopping_mall") || types.includes("restaurant")) shops++;
           if (types.includes("hospital")) hospitals++;
-          if (types.includes("police")) police++;
+          if (
+            types.includes("police") ||
+            (p.name && p.name.toLowerCase().includes("police"))
+          ) {
+            police++;
+          }
         });
 
         let score = 0;
-
         score += Math.min(shops * 1.5, 5);
         score += Math.min(hospitals * 2, 3);
         score += Math.min(police * 3, 3);
 
-        if (shops === 0 && hospitals === 0 && police === 0) {
-          score = 2;
-        }
-
+        if (shops === 0 && hospitals === 0 && police === 0) score = 2;
         if (score > 10) score = 10;
 
         /* DANGER ZONES */
-
         if (score < 7) {
           let reason = "Low safety area";
 
-          if (shops === 0) reason = "No nearby shops (isolated)";
-          else if (hospitals === 0) reason = "No hospital nearby";
-          else if (police === 0) reason = "No police presence";
+          if (shops === 0) reason = "Isolated area";
+          else if (hospitals === 0) reason = "No hospitals nearby";
+          else if (police === 0) reason = "No police nearby";
 
           zones.push({
             lat: midpoint.lat(),
@@ -141,7 +133,6 @@ function MapPage() {
         statsArray.push({ shops, hospitals, police });
 
         return Math.round(score);
-
       })
     );
 
@@ -151,44 +142,49 @@ function MapPage() {
     return { scores, statsArray };
   };
 
-  /* 🔥 SMART AI-LIKE RECOMMENDATION (NO API) */
-
+  /* AI */
   const getAIRecommendation = (scores, stats) => {
 
     const safestIndex = scores.indexOf(Math.max(...scores));
     const safest = stats[safestIndex];
-
-    let reasons = [];
-
-    if (safest.shops > 5) reasons.push("high crowd activity");
-    else if (safest.shops > 2) reasons.push("moderate crowd presence");
-
-    if (safest.hospitals > 0) reasons.push("nearby hospitals");
-
-    if (safest.police > 0) reasons.push("police presence");
-
-    if (reasons.length === 0) {
-      reasons.push("relatively better conditions compared to other routes");
+  
+    let explanation = "";
+  
+    /* CROWD ANALYSIS */
+    if (safest.shops > 6) {
+      explanation += "This route has a high level of public activity, indicating a active area. ";
+    } else if (safest.shops > 2) {
+      explanation += "This route has a moderate level of crowd presence, which provides a reasonable sense of safety. ";
+    } else {
+      explanation += "This route appears relatively less crowded, which may indicate quieter surroundings. ";
     }
-
-    const reasonText = reasons.join(", ");
-
-    setAiRecommendation(
-      `Route ${safestIndex + 1} is recommended as the safest because it has ${reasonText}, making it more secure than the other available routes.`
-    );
+  
+    /* HOSPITAL ANALYSIS */
+    if (safest.hospitals > 0) {
+      explanation += "Nearby hospitals are available along this route. ";
+    } else {
+      explanation += "There are limited medical facilities nearby, which slightly reduces emergency preparedness. ";
+    }
+  
+  
+    /* COMPARISON */
+    explanation += "Compared to other available routes, this path offers better overall safety conditions based on available data.";
+  
+    setAiRecommendation({
+      route: safestIndex + 1,
+      text: explanation
+    });
   };
 
   /* ROUTE */
-
   const calculateRoute = async (destination) => {
 
     if (!origin) {
-      alert("Click Start Live Location first");
+      alert("Start live location first");
       return;
     }
 
-    const directionsService =
-      new window.google.maps.DirectionsService();
+    const directionsService = new window.google.maps.DirectionsService();
 
     const result = await directionsService.route({
       origin,
@@ -205,46 +201,39 @@ function MapPage() {
       await calculateSafetyScores(result.routes);
 
     setSafetyScores(scores);
-
-    getAIRecommendation(scores, statsArray); // 🔥 updated
+    getAIRecommendation(scores, statsArray);
   };
 
   /* DESTINATION */
-
   const onPlaceChanged = (autocomplete) => {
 
     const place = autocomplete.getPlace();
     if (!place.geometry) return;
 
-    const destination = {
+    const dest = {
       lat: place.geometry.location.lat(),
       lng: place.geometry.location.lng()
     };
 
-    setCenter(destination);
-    calculateRoute(destination);
+    setCenter(dest);
+    calculateRoute(dest);
   };
 
-  if (!isLoaded) return <div>Loading Map...</div>;
+  if (!isLoaded) return <div>Loading...</div>;
 
   const safestScore =
     safetyScores.length > 0 ? Math.max(...safetyScores) : null;
 
   return (
 
-    <div style={{ display: "flex" }}>
+    <div className="flex h-screen bg-gray-900 text-white">
 
-      {/* SIDE PANEL */}
+      {/* LEFT PANEL */}
+      <div className="w-80 bg-gray-900 border-r border-gray-700 p-5">
 
-      <div style={{
-        width: "320px",
-        padding: "15px",
-        background: "#fff",
-        height: "100vh",
-        overflowY: "auto"
-      }}>
-
-        <h2>Routes</h2>
+        <h2 className="text-lg font-semibold text-blue-400 mb-4">
+          Routes Overview
+        </h2>
 
         {routes.map((route, i) => {
 
@@ -256,106 +245,138 @@ function MapPage() {
             <div
               key={i}
               onClick={() => setSelectedRoute(i)}
-              style={{
-                padding: "10px",
-                marginBottom: "10px",
-                background: safest ? "#d4edda" : "#f1f1f1",
-                cursor: "pointer"
-              }}
+              className={`p-4 mb-3 rounded-xl cursor-pointer
+                ${safest ? "bg-green-700" : "bg-gray-800 hover:bg-gray-700"}
+              `}
             >
-              <h4>Route {i + 1} {safest && "⭐"}</h4>
-              <p>{leg.distance.text} • {leg.duration.text}</p>
-              <p>Safety: {score}/10</p>
+              <div className="flex justify-between">
+                <span>Route {i + 1}</span>
+                {safest && <span className="text-xs">Best</span>}
+              </div>
+
+              <p className="text-sm text-gray-300">
+                {leg.distance.text} • {leg.duration.text}
+              </p>
+
+              <p className="text-sm text-blue-300">
+                Safety: {score}/10
+              </p>
             </div>
           );
         })}
 
         {aiRecommendation && (
-          <div style={{ marginTop: "15px", background: "#eef", padding: "10px" }}>
-            <h4>AI Recommendation</h4>
-            <p>{aiRecommendation}</p>
-          </div>
+           <div className="mt-4 p-4 bg-blue-900/80 rounded-xl shadow-md">
+
+             <h4 className="text-blue-300 font-semibold mb-2">
+               Insight
+             </h4>
+
+             <p className="text-sm text-gray-200 leading-relaxed">
+               <span className="font-medium text-white">
+               Route {aiRecommendation.route} is recommended.
+               </span>{" "}
+               {aiRecommendation.text}
+             </p>
+
+           </div>
         )}
 
       </div>
 
-      {/* MAP */}
+      {/* RIGHT SIDE */}
+      <div className="flex-1 flex flex-col">
 
-      <div style={{ flex: 1, padding: "15px" }}>
+        {/* TOP BAR */}
+        <div className="p-4 bg-gray-800 border-b border-gray-700 flex flex-col items-center">
 
-        <p>👉 Click <b>Start Live Location</b> first</p>
+          <p className="text-sm text-gray-400 mb-3">
+            Start live location first, then search destination
+          </p>
 
-        <Autocomplete
-          onLoad={(a) => (window.autocomplete = a)}
-          onPlaceChanged={() => onPlaceChanged(window.autocomplete)}
-        >
-          <input
-            placeholder="Search destination"
-            style={{
-              width: "100%",
-              padding: "12px",
-              border: "2px solid blue",
-              borderRadius: "6px"
-            }}
-          />
-        </Autocomplete>
+          <div className="flex items-center gap-4 w-full max-w-6xl">
 
-        <button
-          onClick={getUserLocation}
-          style={{
-            background: "blue",
-            color: "#fff",
-            padding: "10px",
-            marginTop: "10px",
-            border: "none",
-            borderRadius: "6px"
-          }}
-        >
-          Start Live Location
-        </button>
+            <div className="w-[65%]">
+              <Autocomplete
+                onLoad={(a) => (window.autocomplete = a)}
+                onPlaceChanged={() => onPlaceChanged(window.autocomplete)}
+              >
+                <input
+                  placeholder="Search destination..."
+                  className="w-full px-4 py-3 rounded-xl bg-gray-700 border border-gray-600 
+                             focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </Autocomplete>
+            </div>
 
-        <GoogleMap
-          mapContainerStyle={mapContainerStyle}
-          zoom={13}
-          center={center}
-        >
-
-          {userLocation && <Marker position={userLocation} />}
-
-          {directions && (
-            <DirectionsRenderer
-              directions={directions}
-              routeIndex={selectedRoute}
-            />
-          )}
-
-          {dangerZones.map((zone, i) => (
-            <Circle
-              key={i}
-              center={zone}
-              radius={400}
-              onClick={() => setSelectedZone(zone)}
-              options={{
-                fillColor: "red",
-                fillOpacity: 0.4,
-                strokeColor: "red"
-              }}
-            />
-          ))}
-
-          {selectedZone && (
-            <InfoWindow
-              position={selectedZone}
-              onCloseClick={() => setSelectedZone(null)}
+            <button
+              onClick={getUserLocation}
+              className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl"
             >
-              <div>
-                <strong>Danger Zone</strong>
-                <p>{selectedZone.reason}</p>
-              </div>
-            </InfoWindow>
-          )}
+              Start Live Location
+            </button>
 
-        </GoogleMap>
+          </div>
+
+        </div>
+
+        {/* MAP */}
+        <div className="flex-1">
+
+          <GoogleMap
+            mapContainerStyle={mapContainerStyle}
+            zoom={13}
+            center={center}
+          >
+
+            {userLocation && <Marker position={userLocation} />}
+
+            {directions && (
+              <DirectionsRenderer
+                directions={directions}
+                routeIndex={selectedRoute}
+              />
+            )}
+
+            {/* ✅ SUBTLE DANGER ZONES */}
+            {dangerZones.map((zone, i) => (
+              <React.Fragment key={i}>
+
+                <Circle
+                  center={zone}
+                  radius={300}
+                  options={{
+                    fillColor: "#ef4444",
+                    fillOpacity: 0.25,
+                    strokeColor: "#ef4444",
+                    strokeOpacity: 0.5,
+                    strokeWeight: 1
+                  }}
+                />
+
+                {/* Invisible marker for hover FIX */}
+                <Marker
+                  position={zone}
+                  opacity={0}
+                  onMouseOver={() => setHoveredZone(zone)}
+                  onMouseOut={() => setHoveredZone(null)}
+                />
+
+              </React.Fragment>
+            ))}
+
+            {hoveredZone && (
+              <InfoWindow position={hoveredZone}>
+                <div className="text-black text-sm">
+                  <strong>Unsafe Area</strong>
+                  <p>{hoveredZone.reason}</p>
+                </div>
+              </InfoWindow>
+            )}
+
+          </GoogleMap>
+
+        </div>
 
       </div>
 
