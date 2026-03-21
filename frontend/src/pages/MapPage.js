@@ -32,7 +32,6 @@ function MapPage() {
   const [selectedRoute, setSelectedRoute] = useState(0);
 
   const [safetyScores, setSafetyScores] = useState([]);
- // const [routeStats, setRouteStats] = useState([]);
 
   const [dangerZones, setDangerZones] = useState([]);
   const [hoveredZone, setHoveredZone] = useState(null);
@@ -137,7 +136,7 @@ function MapPage() {
     );
 
     setDangerZones(zones);
-    setRouteStats(statsArray);
+
 
     return { scores, statsArray };
   };
