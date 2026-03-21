@@ -32,25 +32,36 @@ function Dashboard() {
   const sendSOS = () => {
 
     const token = localStorage.getItem("token");
-
-    navigator.geolocation.getCurrentPosition(async (position) => {
-
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-
-      try {
-        const res = await axios.post(
-          "https://safety-companion-backend.onrender.com/api/sos",
-          { lat, lng },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        alert(res.data.message);
-      } catch {
-        alert("Failed to send SOS");
+  
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+  
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+  
+        try {
+          const res = await axios.post(
+            "https://safety-companion-backend.onrender.com/api/sos",
+            { lat, lng },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+  
+          // ✅ Always treat success if no error
+          if (res.status === 200 || res.status === 201) {
+            alert("SOS sent successfully ✅");
+          }
+  
+        } catch (err) {
+          console.error(err);
+          alert("Failed to send SOS ❌");
+        }
+  
+      },
+      (error) => {
+        // ✅ Handle location permission error
+        alert("Location access denied ❌");
       }
-
-    });
+    );
   };
 
   if (!user) return <div className="text-white p-10">Loading...</div>;
