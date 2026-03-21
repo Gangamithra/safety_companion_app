@@ -19,9 +19,9 @@ function EmergencyContacts(){
     }
   };
 
-  useEffect(()=>{
+  useEffect(() => {
     fetchContacts();
-  },[]);
+  }, [fetchContacts]);
 
   const fetchContacts = async()=>{
     try{
