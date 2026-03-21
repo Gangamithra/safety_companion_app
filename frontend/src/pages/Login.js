@@ -13,11 +13,14 @@ function Login() {
   const handleLogin = async(e)=>{
     e.preventDefault();
 
-    try{
-      const res = await axios.post("http://localhost:5001/login",{
-        email,
-        password
-      });
+    try {
+      const res = await axios.post(
+        "https://safety-companion-backend.onrender.com/login",
+        {
+          email,
+          password
+        }
+      );
 
       localStorage.setItem("token",res.data.token);
       navigate("/dashboard");

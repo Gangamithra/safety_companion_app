@@ -16,20 +16,18 @@ function ResetPassword() {
     e.preventDefault();
 
     try {
-
       await axios.post(
-        "http://localhost:5001/api/simple-reset-password",
+        "https://safety-companion-backend.onrender.com/api/simple-reset-password",
         { email, password }
       );
-
+    
       alert("Password updated successfully");
       navigate("/login");
-
+    
     } catch {
       alert("Error updating password");
     }
   };
-
   return (
 
     <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">

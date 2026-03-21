@@ -10,9 +10,12 @@ const app = express();
 const User = require("./models/User");
 
 /* ---------------- MIDDLEWARE ---------------- */
-
 app.use(cors({
-  origin: "http://localhost:3000"
+  origin: [
+    "http://localhost:3000",
+    "https://safety-companion-app.vercel.app"
+  ],
+  credentials: true
 }));
 
 app.use(express.json());

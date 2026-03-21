@@ -22,9 +22,14 @@ function Signup() {
     e.preventDefault();
 
     try {
-      const res = await axios.post("http://localhost:5001/signup", formData);
+      const res = await axios.post(
+        "https://safety-companion-backend.onrender.com/signup",
+        formData
+      );
+    
       alert(res.data.message);
       navigate("/login");
+    
     } catch (error) {
       alert(error.response?.data?.msg || "Signup failed");
     }

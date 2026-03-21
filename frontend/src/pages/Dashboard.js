@@ -19,7 +19,7 @@ function Dashboard() {
       return;
     }
 
-    fetch("http://localhost:5001/api/auth/me", {
+    fetch("https://safety-companion-backend.onrender.com/api/auth/me", {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -40,7 +40,7 @@ function Dashboard() {
 
       try {
         const res = await axios.post(
-          "http://localhost:5001/api/sos",
+          "https://safety-companion-backend.onrender.com/api/sos",
           { lat, lng },
           { headers: { Authorization: `Bearer ${token}` } }
         );

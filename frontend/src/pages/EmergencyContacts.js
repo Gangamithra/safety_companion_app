@@ -3,7 +3,7 @@ import axios from "axios";
 
 function EmergencyContacts(){
 
-  const API = "http://localhost:5001/api/contacts";
+  const API = "https://safety-companion-backend.onrender.com/api/contacts";
 
   const [contacts,setContacts] = useState([]);
   const [name,setName] = useState("");
